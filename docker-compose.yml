@@ -1,0 +1,73 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: zebra
+      POSTGRES_PASSWORD: zebra
+      POSTGRES_DB: toggles
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports: ["9200:9200"]
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.4
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports: ["5601:5601"]
+    depends_on: [elasticsearch]
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    volumes:
+      - ./backend/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports: ["9090:9090"]
+    depends_on: [backend]
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    ports: ["3001:3000"]
+    depends_on: [prometheus]
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+
+  backend:
+    build: ./backend
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=${PORT:-8080}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://zebra:zebra@postgres:5432/toggles}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - ELASTIC_URL=${ELASTIC_URL:-http://elasticsearch:9200}
+      - JWT_SECRET=${JWT_SECRET:-devAlperenZebra}
+      - CACHE_TTL_SECONDS=${CACHE_TTL_SECONDS:-30}
+      - RATE_LIMIT_BURST=${RATE_LIMIT_BURST:-30}
+      - RATE_LIMIT_SUSTAINED_PER_SEC=${RATE_LIMIT_SUSTAINED_PER_SEC:-5}
+    ports: ["8080:8080"]
+    depends_on: [postgres, redis, elasticsearch]
+
+  ui:
+    build: ./ui
+    environment:
+      - NEXT_PUBLIC_API_BASE=${NEXT_PUBLIC_API_BASE:-http://localhost:8080}
+    ports: ["3000:3000"]
+    depends_on: [backend]
+
+volumes:
+  pgdata:
+  esdata:

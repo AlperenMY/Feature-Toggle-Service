@@ -1,0 +1,86 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: zebra
+      POSTGRES_PASSWORD: zebra
+      POSTGRES_DB: toggles
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports: ["9200:9200"]
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.4
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports: ["5601:5601"]
+    depends_on: [elasticsearch]
+
+  backend:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "apk add --no-cache openssl ca-certificates && npm i && npx prisma generate && npm run dev"
+    environment:
+      - NODE_ENV=development
+      - PORT=8080
+      - DATABASE_URL=postgresql://zebra:zebra@postgres:5432/toggles
+      - REDIS_URL=redis://redis:6379
+      - ELASTIC_URL=http://elasticsearch:9200
+      - JWT_SECRET=devAlperenZebra
+      - RATE_LIMIT_BURST=30
+      - RATE_LIMIT_SUSTAINED_PER_SEC=5
+      - CACHE_TTL_SECONDS=30
+    ports: ["8080:8080"]
+    volumes:
+      - ./backend:/app
+      - backend_node_modules:/app/node_modules
+    depends_on: [postgres, redis, elasticsearch]
+
+  ui:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_BASE=http://localhost:8080
+      - PORT=3000
+    ports: ["3000:3000"]
+    volumes:
+      - ./ui:/app
+      - ui_node_modules:/app/node_modules
+    depends_on: [backend]
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    volumes:
+      - ./backend/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports: ["9090:9090"]
+    depends_on: [backend]
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    ports: ["3001:3000"]
+    depends_on: [prometheus]
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+
+volumes:
+  pgdata:
+  esdata:
+  backend_node_modules:
+  ui_node_modules:

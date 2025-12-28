@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id           String   @id @default(uuid())
+  slug         String   @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  flags        FeatureFlag[]
+}
+
+model Feature {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  name      String
+  createdAt DateTime @default(now())
+
+  flags     FeatureFlag[]
+}
+
+model FeatureFlag {
+  id             String   @id @default(uuid())
+  tenantId       String
+  featureId      String
+  env            String
+
+  enabled        Boolean  @default(false)
+  strategyType   String   @default("boolean") // boolean|percentage|targeting
+  strategyConfig Json     @default("{}")
+
+  version        Int      @default(1)
+  updatedAt      DateTime @updatedAt
+
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  feature        Feature  @relation(fields: [featureId], references: [id])
+
+  @@unique([tenantId, featureId, env])
+  @@index([tenantId, env])
+}
