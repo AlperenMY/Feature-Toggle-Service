@@ -1,6 +1,7 @@
 import axios, { type AxiosRequestConfig } from "axios";
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
+export const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 
 const client = axios.create({
   baseURL: API_BASE,
@@ -8,7 +9,10 @@ const client = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-export async function api<T>(path: string, opts: AxiosRequestConfig = {}): Promise<T> {
+export async function api<T>(
+  path: string,
+  opts: AxiosRequestConfig = {}
+): Promise<T> {
   const { body, ...rest } = opts as any;
   const data = body ?? opts.data;
 
