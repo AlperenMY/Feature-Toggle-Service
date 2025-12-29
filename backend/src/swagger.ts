@@ -261,11 +261,67 @@ export function mountSwagger(app: Express) {
       "/features": {
         get: {
           summary: "List features",
+          parameters: [
+            {
+              name: "tenant",
+              in: "query",
+              required: true,
+              schema: { type: "string" },
+              example: "zebra",
+            },
+            {
+              name: "env",
+              in: "query",
+              required: true,
+              schema: { type: "string", enum: ["dev", "staging", "prod"] },
+              example: "dev",
+            },
+            {
+              name: "page",
+              in: "query",
+              required: false,
+              schema: { type: "integer", minimum: 1, default: 1 },
+              example: 1,
+            },
+            {
+              name: "pageSize",
+              in: "query",
+              required: false,
+              schema: { type: "integer", minimum: 1, maximum: 100, default: 20 },
+              example: 20,
+            },
+          ],
           responses: {
             "200": {
               description: "OK",
               content: {
-                "application/json": { schema: { $ref: "#/components/schemas/FeatureListResponse" } },
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/FeatureListResponse" },
+                  example: {
+                    version: 2,
+                    total: 3,
+                    items: [
+                      {
+                        featureKey: "checkout_v2",
+                        featureName: "Checkout V2",
+                        enabled: true,
+                        strategyType: "boolean",
+                        strategyConfig: {},
+                        version: 2,
+                        updatedAt: "2024-01-01T10:00:00.000Z",
+                      },
+                      {
+                        featureKey: "new_dashboard",
+                        featureName: "New Dashboard",
+                        enabled: false,
+                        strategyType: "targeting",
+                        strategyConfig: { allow: ["user-123"] },
+                        version: 1,
+                        updatedAt: "2024-01-01T09:30:00.000Z",
+                      },
+                    ],
+                  },
+                },
               },
             },
             "401": {
