@@ -47,6 +47,7 @@ services:
 
   backend:
     build: ./backend
+    restart: unless-stopped
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=${PORT:-8080}
